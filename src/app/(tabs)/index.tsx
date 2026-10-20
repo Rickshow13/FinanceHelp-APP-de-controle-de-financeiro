@@ -186,8 +186,7 @@ export default function TelaInicial() {
       {/* Para cada transação da lista, desenha uma linha (a forma de biscoito!) */}
       {transacoes.map((t) => (
         // A linha da transação. O key é o RG dela
-        <View key={t.id} style={estilos.item}>
-          {/* O emoji da categoria */}
+        <Pressable key={t.id} style={estilos.item} onPress={() => router.push({ pathname: '/nova-transacao', params: { id: t.id } })}>          {/* O emoji da categoria */}
           <Text style={estilos.itemEmoji}>{emojiDa(t)}</Text>
           {/* Caixa do meio: ocupa todo o espaço que sobrar (flex: 1) */}
           <View style={{ flex: 1 }}>
@@ -200,8 +199,7 @@ export default function TelaInicial() {
           {/* O valor: "−" e vermelho se for gasto, "+" e verde se for entrada */}
           <Text style={[estilos.itemValor, { color: t.tipo === 'gasto' ? '#FF8A80' : '#4ADE80' }]}>{t.tipo === 'gasto' ? '− ' : '+ '}{formatarReais(Number(t.valor))}</Text>
         {/* Fecha a linha da transação */}
-        </View>
-      // Fecha a forma de biscoito
+        </Pressable>      // Fecha a forma de biscoito
       ))}
 
       {/* Botão de sair: pede ao cofre para jogar fora o crachá */}
