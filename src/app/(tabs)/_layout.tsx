@@ -1,18 +1,33 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+// Importa as abas do expo-router
+import { Tabs } from 'expo-router';
+// Importa as cores do guarda-roupa
+import { cores } from '../../lib/tema';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Cria a moldura da área VIP (as abas)
+export default function LayoutAbas() {
+  // Devolve as abas
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    // As abas, com as configurações que valem para todas elas
+    <Tabs
+      // Configurações de todas as abas
+      screenOptions={{
+        // Esconde a barra de título de cada tela
+        headerShown: false,
+        // Esconde a barra de abas por enquanto (ela volta no Passo 5, com a aba Gráficos)
+        tabBarStyle: { display: 'none' },
+        // Fundo de todas as telas: preto ônix
+        sceneStyle: { backgroundColor: cores.onix },
+      // Fecha as configurações
+      }}
+    // Fecha a abertura das abas
+    >
+      {/* A tela inicial */}
+      <Tabs.Screen name="index" options={{ title: 'Início' }} />
+      {/* A tela de exemplo do Expo: escondida (href: null quer dizer "sem endereço") */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
+    {/* Fecha as abas */}
+    </Tabs>
+  // Fecha o return
   );
+// Fecha a moldura
 }

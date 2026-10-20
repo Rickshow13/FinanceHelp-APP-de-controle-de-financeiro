@@ -1,87 +1,109 @@
-// Importa a memória (useState) e o "guardador de função" (useCallback)
+// ============ PARTE 1: AS FERRAMENTAS ============
+// Importa a memória (useState) e o guardador de função (useCallback)
 import { useCallback, useState } from 'react';
 // Importa as peças da tela
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-// Importa o GPS (router) e o "avisador de tela visível" (useFocusEffect)
+// Importa o GPS (router) e o avisador de tela visível (useFocusEffect)
 import { router, useFocusEffect } from 'expo-router';
+// Importa o pincel de degradê (para o brilho do lingote)
+import { LinearGradient } from 'expo-linear-gradient';
+// Importa a caixa de ícones
+import Ionicons from '@expo/vector-icons/Ionicons';
 // Importa o telefone do cofre
 import { supabase } from '../../lib/supabase';
-// Importa o cardápio de categorias (para achar o emoji de cada transação)
-import { CATEGORIAS_ENTRADA, CATEGORIAS_GASTO } from '../../lib/categorias';
+// Importa o cardápio de categorias e o tipo "nome de ícone"
+import { CATEGORIAS_ENTRADA, CATEGORIAS_GASTO, type NomeIcone } from '../../lib/categorias';
+// Importa o guarda-roupa: cores, letras e o degradê dourado
+import { cores, degradeOuro, fontes } from '../../lib/tema';
 
-// A "ficha" de uma transação: descreve as informações que cada uma tem (igual às colunas da gaveta)
+// ============ PARTE 2: A FICHA E OS AJUDANTES ============
+// A ficha de uma transação (igual às colunas da gaveta no cofre)
 type Transacao = {
   // O RG da transação
   id: string;
-  // Se é gasto ou entrada
+  // Gasto ou entrada
   tipo: 'gasto' | 'entrada';
   // O valor em reais
   valor: number;
   // A categoria
   categoria: string;
-  // A descrição (pode ser texto ou "nada", que é o null)
+  // A descrição (texto ou "nada")
   descricao: string | null;
-  // A data, no jeito do cofre: "2026-10-20"
+  // A data no jeito do cofre: "2026-10-20"
   data: string;
 // Fecha a ficha
 };
 
-// Ajudante 1: transforma um número em dinheiro brasileiro (45.9 vira "R$ 45,90")
+// Nomes curtos dos meses (posição 0 é janeiro, porque o computador conta do zero)
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+// Degradê coral: usado no lingote quando o saldo fica negativo
+const degradeCoral = ['#FFB1A6', '#FF7B6B', '#B8432F'] as const;
+
+// Ajudante 1: transforma número em dinheiro brasileiro (45.9 vira "R$ 45,90")
 function formatarReais(valor: number) {
   // Usa o formatador do Brasil, no estilo moeda real
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 // Fecha
 }
 
-// Ajudante 2: transforma a data do cofre no jeito brasileiro ("2026-10-20" vira "20/10")
+// Ajudante 2: transforma a data do cofre em "20 out"
 function formatarData(data: string) {
   // Quebra a data nos tracinhos: ["2026", "10", "20"]
   const partes = data.split('-');
-  // Junta o dia (pedaço 2) e o mês (pedaço 1) com uma barra
-  return partes[2] + '/' + partes[1];
+  // Junta o dia (sem o zero na frente) com o nome curto do mês (o -1 é porque a lista começa do zero)
+  return Number(partes[2]) + ' ' + MESES[Number(partes[1]) - 1];
 // Fecha
 }
 
-// Ajudante 3: acha o emoji da categoria de uma transação
-function emojiDa(transacao: Transacao) {
-  // Escolhe o cardápio certo: de gasto ou de entrada
+// Ajudante 3: acha o ícone da categoria de uma transação
+function iconeDa(transacao: Transacao): NomeIcone {
+  // Escolhe o cardápio certo
   const cardapio = transacao.tipo === 'gasto' ? CATEGORIAS_GASTO : CATEGORIAS_ENTRADA;
-  // Procura no cardápio a categoria com o mesmo nome
+  // Procura a categoria com o mesmo nome
   const encontrada = cardapio.find((item) => item.nome === transacao.categoria);
-  // Se achou, devolve o emoji dela. Se não achou, devolve a caixinha 📦
-  return encontrada ? encontrada.emoji : '📦';
+  // Se achou, devolve o ícone dela. Se não, devolve os três pontinhos
+  return encontrada ? encontrada.icone : 'ellipsis-horizontal';
 // Fecha
 }
 
+// Ajudante 4: deixa a primeira letra maiúscula ("mercado" vira "Mercado")
+function primeiraMaiuscula(texto: string) {
+  // Pega a primeira letra, deixa maiúscula e junta com o resto
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+// Fecha
+}
+
+// ============ PARTE 3: MEMÓRIAS, BUSCA E CONTAS ============
 // Cria a tela inicial
 export default function TelaInicial() {
-  // Post-it com a lista de transações do mês. Começa vazia ([] é uma lista sem nada)
+  // Post-it com a lista de transações do mês
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
-  // Post-it de "está buscando no cofre?". Começa com sim
+  // Post-it de "está buscando no cofre?"
   const [carregando, setCarregando] = useState(true);
-  // Post-it do aviso de erro. Começa vazio
+  // Post-it do aviso de erro
   const [erro, setErro] = useState('');
 
   // Pega a data de hoje
   const hoje = new Date();
-  // Monta o primeiro dia do mês no jeito do cofre: "2026-10-01" (o +1 é porque, para o computador, janeiro é o mês 0)
+  // Monta o primeiro dia do mês no jeito do cofre: "2026-10-01"
   const primeiroDiaDoMes = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`;
-  // Nome do mês por extenso, no jeito brasileiro: "outubro de 2026"
-  const nomeDoMes = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  // Nome do mês por extenso: "outubro"
+  const mesExtenso = hoje.toLocaleDateString('pt-BR', { month: 'long' });
 
   // Função que busca as transações do mês no cofre
   async function carregar() {
     // Liga a rodinha
     setCarregando(true);
-    // Liga para o cofre e pede...
+    // Pede ao cofre: tudo da gaveta transacoes, deste mês, da mais nova para a mais antiga
     const { data, error } = await supabase
-      // ...na gaveta transacoes...
+      // Na gaveta transacoes...
       .from('transacoes')
-      // ...todas as colunas (o * quer dizer "tudo")...
+      // ...todas as colunas...
       .select('*')
-      // ...só as com data maior ou igual ao primeiro dia do mês (gte = "maior ou igual")...
+      // ...com data maior ou igual ao primeiro dia do mês...
       .gte('data', primeiroDiaDoMes)
-      // ...organizadas da data mais nova para a mais antiga...
+      // ...da data mais nova para a mais antiga...
       .order('data', { ascending: false })
       // ...e, no mesmo dia, da registrada por último para a primeira
       .order('criado_em', { ascending: false });
@@ -90,124 +112,142 @@ export default function TelaInicial() {
     // Se deu erro...
     if (error) {
       // ...avisa
-      setErro('Não foi possível carregar suas transações.');
-      // ...e para por aqui
+      setErro('Não foi possível carregar suas movimentações. Puxe a tela ou abra o app de novo.');
+      // ...e para
       return;
     // Fecha o "se"
     }
     // Apaga avisos antigos
     setErro('');
-    // Guarda a lista no post-it (se vier "nada", guarda uma lista vazia)
+    // Guarda a lista
     setTransacoes(data ?? []);
   // Fecha a função carregar
   }
 
-  // O avisador: toda vez que esta tela aparecer (inclusive quando volta da tela de adicionar), busca de novo
+  // Toda vez que esta tela aparecer, busca de novo
   useFocusEffect(
-    // O useCallback "guarda" a função, para ela não ser recriada à toa
+    // Guarda a função para não ser recriada à toa
     useCallback(() => {
-      // Busca as transações no cofre
+      // Busca as transações
       carregar();
-    // Os colchetes vazios: "não depende de nada"
+    // Não depende de nada
     }, [])
   // Fecha o avisador
   );
-  
-  // Soma as entradas: separa só as entradas e vai somando no cofrinho, que começa com zero
+
+  // Soma as entradas (o cofrinho que começa com zero)
   const totalEntradas = transacoes.filter((t) => t.tipo === 'entrada').reduce((soma, t) => soma + Number(t.valor), 0);
-  // Soma os gastos, do mesmo jeito
+  // Soma os gastos
   const totalGastos = transacoes.filter((t) => t.tipo === 'gasto').reduce((soma, t) => soma + Number(t.valor), 0);
-  // O saldo: tudo que entrou menos tudo que saiu
+  // O saldo: entradas menos gastos
   const saldo = totalEntradas - totalGastos;
-  
+  // O saldo está abaixo de zero? (decide a cor do lingote)
+  const negativo = saldo < 0;
+  // Cor das letras em cima do lingote: tinta coral se negativo, tinta dourada se positivo
+  const tinta = negativo ? cores.coralTinta : cores.ouroTinta;
+
+  // ============ PARTE 4: O DESENHO DA TELA ============
   // Devolve o que aparece na tela
   return (
-    // Caixa que rola, para caber a lista inteira
+    // Caixa que rola
     <ScrollView style={estilos.tela} contentContainerStyle={estilos.conteudo}>
 
-      {/* Saudação */}
-      <Text style={estilos.titulo}>Olá! 👋</Text>
-      {/* Nome do mês atual */}
-      <Text style={estilos.subtitulo}>Resumo de {nomeDoMes}</Text>
-
-      {/* Cartão do saldo: veste a roupa vermelha SÓ SE o saldo for negativo */}
-      <View style={[estilos.cartao, saldo < 0 && estilos.cartaoNegativo]}>
-        {/* Rótulo */}
-        <Text style={estilos.cartaoRotulo}>Saldo do mês</Text>
-        {/* O saldo, agora calculado de verdade! */}
-        <Text style={estilos.cartaoValor}>{formatarReais(saldo)}</Text>
-      {/* Fecha o cartão */}
+      {/* Linha de cima: nome do app e botão de sair */}
+      <View style={estilos.topo}>
+        {/* "Finance" em marfim e "Help" em ouro, na letra do painel da bolsa */}
+        <Text style={estilos.marca}>Finance<Text style={{ color: cores.ouro }}>Help</Text></Text>
+        {/* Botão de sair: um ícone. O accessibilityLabel é lido em voz alta por leitores de tela */}
+        <Pressable style={estilos.botaoSair} onPress={() => supabase.auth.signOut()} hitSlop={12} accessibilityLabel="Sair da conta">
+          {/* O ícone de "porta de saída" */}
+          <Ionicons name="log-out-outline" size={20} color={cores.prata} />
+        {/* Fecha o botão de sair */}
+        </Pressable>
+      {/* Fecha a linha de cima */}
       </View>
 
-      {/* Linha com os dois mini cartões, lado a lado */}
-      <View style={estilos.resumo}>
-        {/* Mini cartão das entradas */}
-        <View style={estilos.miniCartao}>
-          {/* Rótulo */}
-          <Text style={estilos.miniRotulo}>⬆️ Entradas</Text>
-          {/* Total das entradas, em verde */}
-          <Text style={[estilos.miniValor, { color: '#4ADE80' }]}>{formatarReais(totalEntradas)}</Text>
-        {/* Fecha o mini cartão das entradas */}
-        </View>
-        {/* Mini cartão dos gastos */}
-        <View style={estilos.miniCartao}>
-          {/* Rótulo */}
-          <Text style={estilos.miniRotulo}>⬇️ Gastos</Text>
-          {/* Total dos gastos, em vermelho */}
-          <Text style={[estilos.miniValor, { color: '#FF8A80' }]}>{formatarReais(totalGastos)}</Text>
-        {/* Fecha o mini cartão dos gastos */}
-        </View>
-      {/* Fecha a linha dos mini cartões */}
-      </View>
+      {/* Saudação com o mês */}
+      <Text style={estilos.saudacao}>Este é o seu {mesExtenso}.</Text>
 
-      {/* Botão de nova transação: o GPS coloca a tela de adicionar em cima desta */}
+      {/* O LINGOTE: degradê na diagonal ↘️, dourado se positivo e coral se negativo */}
+      <LinearGradient colors={negativo ? degradeCoral : degradeOuro} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.lingote}>
+        {/* O reflexo de luz: branco transparente na metade de cima, que faz parecer metal */}
+        <LinearGradient colors={['rgba(255,255,255,0.35)', 'rgba(255,255,255,0)']} style={estilos.reflexo} />
+        {/* Rótulo: muda quando o saldo fica negativo */}
+        <Text style={[estilos.lingoteRotulo, { color: tinta }]}>{negativo ? 'Você gastou mais do que entrou' : `Saldo de ${mesExtenso}`}</Text>
+        {/* O saldo, grande, na letra do painel da bolsa (com sinal de menos se negativo) */}
+        <Text style={[estilos.lingoteSaldo, { color: tinta }]}>{(negativo ? '−' : '') + formatarReais(Math.abs(saldo))}</Text>
+        {/* Linha de baixo do lingote: quanto entrou e quanto saiu */}
+        <View style={[estilos.lingotePartes, { borderTopColor: tinta }]}>
+          {/* Metade da esquerda: entradas */}
+          <View style={{ flex: 1 }}>
+            {/* Rótulo */}
+            <Text style={[estilos.parteRotulo, { color: tinta }]}>Entrou</Text>
+            {/* Valor */}
+            <Text style={[estilos.parteValor, { color: tinta }]}>{formatarReais(totalEntradas)}</Text>
+          {/* Fecha a metade da esquerda */}
+          </View>
+          {/* Metade da direita: gastos */}
+          <View style={{ flex: 1 }}>
+            {/* Rótulo */}
+            <Text style={[estilos.parteRotulo, { color: tinta }]}>Saiu</Text>
+            {/* Valor */}
+            <Text style={[estilos.parteValor, { color: tinta }]}>{formatarReais(totalGastos)}</Text>
+          {/* Fecha a metade da direita */}
+          </View>
+        {/* Fecha a linha de baixo */}
+        </View>
+      {/* Fecha o lingote */}
+      </LinearGradient>
+
+      {/* Botão de nova transação */}
       <Pressable style={estilos.botaoNovo} onPress={() => router.push('/nova-transacao')}>
+        {/* Ícone de "mais" */}
+        <Ionicons name="add" size={20} color={cores.ouro} />
         {/* Texto do botão */}
-        <Text style={estilos.botaoNovoTexto}>➕ Nova transação</Text>
+        <Text style={estilos.botaoNovoTexto}>Nova transação</Text>
       {/* Fecha o botão */}
       </Pressable>
 
       {/* Título da lista */}
-      <Text style={estilos.secao}>Transações do mês</Text>
+      <Text style={estilos.secao}>Movimentações</Text>
 
-      {/* Situação 1: se estiver buscando, mostra a rodinha */}
-      {carregando && <ActivityIndicator color="#1E8E5A" style={{ marginTop: 16 }} />}
+      {/* Situação 1: buscando no cofre */}
+      {carregando && <ActivityIndicator color={cores.ouro} style={{ marginTop: 16 }} />}
 
-      {/* Situação 2: se deu erro, mostra o aviso */}
+      {/* Situação 2: deu erro */}
       {erro !== '' && <Text style={estilos.erro}>{erro}</Text>}
 
-      {/* Situação 3: se terminou, não deu erro e a lista está vazia, mostra o convite */}
+      {/* Situação 3: lista vazia */}
       {!carregando && erro === '' && transacoes.length === 0 && (
-        // O texto do convite ({'\n'} pula uma linha)
-        <Text style={estilos.vazio}>Nenhuma transação este mês.{'\n'}Toque em ➕ para registrar a primeira!</Text>
+        // Convite para registrar a primeira
+        <Text style={estilos.vazio}>Nada registrado em {mesExtenso} ainda. Toque em Nova transação para anotar o primeiro gasto ou entrada.</Text>
       // Fecha a situação 3
       )}
 
-      {/* Para cada transação da lista, desenha uma linha (a forma de biscoito!) */}
+      {/* Para cada transação, uma linha tocável (a forma de biscoito) */}
       {transacoes.map((t) => (
-        // A linha da transação. O key é o RG dela
-        <Pressable key={t.id} style={estilos.item} onPress={() => router.push({ pathname: '/nova-transacao', params: { id: t.id } })}>          {/* O emoji da categoria */}
-          <Text style={estilos.itemEmoji}>{emojiDa(t)}</Text>
-          {/* Caixa do meio: ocupa todo o espaço que sobrar (flex: 1) */}
+        // A linha: ao tocar, abre a edição levando o RG no bilhete
+        <Pressable key={t.id} style={estilos.item} onPress={() => router.push({ pathname: '/nova-transacao', params: { id: t.id } })}>
+          {/* Quadradinho com o ícone da categoria (dourado se for entrada, prata se for gasto) */}
+          <View style={estilos.itemIcone}>
+            {/* O ícone */}
+            <Ionicons name={iconeDa(t)} size={20} color={t.tipo === 'entrada' ? cores.ouro : cores.prata} />
+          {/* Fecha o quadradinho */}
+          </View>
+          {/* Caixa do meio: ocupa o espaço que sobrar */}
           <View style={{ flex: 1 }}>
-            {/* Se tiver descrição, mostra ela. Se não, mostra a categoria (o || quer dizer "ou então") */}
-            <Text style={estilos.itemTitulo}>{t.descricao || t.categoria}</Text>
-            {/* Embaixo, em cinza: a categoria e a data */}
-            <Text style={estilos.itemDetalhe}>{t.categoria} · {formatarData(t.data)}</Text>
+            {/* Descrição (ou categoria), com a primeira letra maiúscula e cortada em 1 linha */}
+            <Text style={estilos.itemTitulo} numberOfLines={1}>{primeiraMaiuscula(t.descricao || t.categoria)}</Text>
+            {/* Categoria e data, em prata */}
+            <Text style={estilos.itemDetalhe}>{t.categoria}, {formatarData(t.data)}</Text>
           {/* Fecha a caixa do meio */}
           </View>
-          {/* O valor: "−" e vermelho se for gasto, "+" e verde se for entrada */}
-          <Text style={[estilos.itemValor, { color: t.tipo === 'gasto' ? '#FF8A80' : '#4ADE80' }]}>{t.tipo === 'gasto' ? '− ' : '+ '}{formatarReais(Number(t.valor))}</Text>
-        {/* Fecha a linha da transação */}
-        </Pressable>      // Fecha a forma de biscoito
+          {/* Valor: "−" e coral se gasto, "+" e dourado se entrada */}
+          <Text style={[estilos.itemValor, { color: t.tipo === 'gasto' ? cores.coral : cores.ouro }]}>{(t.tipo === 'gasto' ? '−' : '+') + formatarReais(Number(t.valor))}</Text>
+        {/* Fecha a linha */}
+        </Pressable>
+      // Fecha a forma de biscoito
       ))}
-
-      {/* Botão de sair: pede ao cofre para jogar fora o crachá */}
-      <Pressable style={estilos.botaoSair} onPress={() => supabase.auth.signOut()}>
-        {/* Texto do botão */}
-        <Text style={estilos.botaoSairTexto}>Sair da conta</Text>
-      {/* Fecha o botão */}
-      </Pressable>
 
     {/* Fecha a caixa que rola */}
     </ScrollView>
@@ -216,254 +256,294 @@ export default function TelaInicial() {
 // Fecha a tela inicial
 }
 
-// Estilos: a "roupa" da tela
+// ============ PARTE 5: A ROUPA (ESTILOS) ============
 const estilos = StyleSheet.create({
   // A tela inteira
   tela: {
     // Ocupa tudo
     flex: 1,
-    // Fundo verde bem escuro
-    backgroundColor: '#0F1F17',
+    // Fundo preto ônix
+    backgroundColor: cores.onix,
   // Fecha
   },
-  // O conteúdo de dentro da caixa que rola
+  // O conteúdo de dentro
   conteudo: {
     // Espaço nas bordas
-    padding: 24,
+    padding: 20,
     // Espaço extra em cima, por causa do relógio do celular
-    paddingTop: 60,
-    // Espaço extra embaixo, para o último item não ficar colado no fim
-    paddingBottom: 40,
+    paddingTop: 56,
+    // Espaço extra embaixo
+    paddingBottom: 48,
+    // No computador, não passa de 560 de largura (fica com cara de celular)
+    maxWidth: 560,
+    // Ocupa a largura toda até esse limite
+    width: '100%',
+    // Fica centralizado
+    alignSelf: 'center',
+  // Fecha
+  },
+  // Linha de cima
+  topo: {
+    // Lado a lado
+    flexDirection: 'row',
+    // Nome na esquerda, botão na direita
+    justifyContent: 'space-between',
+    // Alinhados no meio
+    alignItems: 'center',
+  // Fecha
+  },
+  // O nome do app
+  marca: {
+    // Letra do painel da bolsa, bem grossa
+    fontFamily: fontes.marca,
+    // Tamanho
+    fontSize: 28,
+    // Cor marfim (o "Help" fica dourado)
+    color: cores.marfim,
+  // Fecha
+  },
+  // Botão de sair
+  botaoSair: {
+    // Largura
+    width: 38,
+    // Altura
+    height: 38,
+    // Redondo
+    borderRadius: 19,
+    // Fundo grafite
+    backgroundColor: cores.grafite,
+    // Borda fina
+    borderWidth: 1,
+    // Cor da borda
+    borderColor: cores.grafiteBorda,
+    // Ícone no meio (na horizontal)
+    alignItems: 'center',
+    // Ícone no meio (na vertical)
+    justifyContent: 'center',
   // Fecha
   },
   // Saudação
-  titulo: {
-    // Letra grande
-    fontSize: 28,
-    // Negrito
-    fontWeight: 'bold',
-    // Branca
-    color: '#FFFFFF',
-  // Fecha
-  },
-  // Nome do mês
-  subtitulo: {
-    // Letra média
-    fontSize: 16,
-    // Cinza clarinho
-    color: '#A7B8AE',
+  saudacao: {
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Tamanho
+    fontSize: 15,
+    // Prata
+    color: cores.prata,
     // Espaço acima
-    marginTop: 4,
+    marginTop: 18,
     // Espaço abaixo
-    marginBottom: 24,
+    marginBottom: 12,
   // Fecha
   },
-  // Cartão do saldo
-  cartao: {
-    // Verde vivo
-    backgroundColor: '#1E8E5A',
-    // Espaço interno
-    padding: 24,
+  // O lingote
+  lingote: {
     // Pontas arredondadas
-    borderRadius: 20,
+    borderRadius: 22,
+    // Espaço interno
+    padding: 20,
+    // Corta o reflexo nas pontas arredondadas
+    overflow: 'hidden',
   // Fecha
   },
-  // Roupa vermelha do cartão (quando o saldo é negativo)
-  cartaoNegativo: {
-    // Vermelho
-    backgroundColor: '#B42318',
+  // O reflexo de luz
+  reflexo: {
+    // Posição livre, por cima do lingote
+    position: 'absolute',
+    // Colado em cima
+    top: 0,
+    // Colado na esquerda
+    left: 0,
+    // Colado na direita
+    right: 0,
+    // Só a metade de cima
+    height: '55%',
   // Fecha
   },
-  // Texto "Saldo do mês"
-  cartaoRotulo: {
-    // Letra pequena
+  // Rótulo do lingote
+  lingoteRotulo: {
+    // Letra simples, forte
+    fontFamily: fontes.textoForte,
+    // Tamanho
     fontSize: 14,
-    // Branco um pouco transparente
-    color: 'rgba(255,255,255,0.8)',
+    // Um pouco transparente
+    opacity: 0.85,
   // Fecha
   },
-  // Valor do saldo
-  cartaoValor: {
-    // Letra bem grande
-    fontSize: 36,
-    // Negrito
-    fontWeight: 'bold',
-    // Branca
-    color: '#FFFFFF',
+  // O saldo grande
+  lingoteSaldo: {
+    // Letra do painel da bolsa, bem grossa
+    fontFamily: fontes.marca,
+    // Bem grande
+    fontSize: 52,
     // Espaço acima
-    marginTop: 8,
+    marginTop: 2,
+    // Espaço abaixo
+    marginBottom: 14,
   // Fecha
   },
-  // Linha dos dois mini cartões
-  resumo: {
-    // Um do lado do outro
+  // Linha de baixo do lingote
+  lingotePartes: {
+    // Lado a lado
     flexDirection: 'row',
-    // Espaço entre eles
-    gap: 12,
+    // Linha fina em cima, separando do saldo
+    borderTopWidth: StyleSheet.hairlineWidth,
     // Espaço acima
-    marginTop: 12,
+    paddingTop: 12,
   // Fecha
   },
-  // Cada mini cartão
-  miniCartao: {
-    // Os dois dividem o espaço meio a meio
-    flex: 1,
-    // Fundo um pouco mais claro que a tela
-    backgroundColor: '#1A2E23',
-    // Espaço interno
-    padding: 16,
-    // Pontas arredondadas
-    borderRadius: 16,
+  // Rótulo "Entrou" / "Saiu"
+  parteRotulo: {
+    // Letra simples, média
+    fontFamily: fontes.textoMedio,
+    // Pequena
+    fontSize: 12,
+    // Um pouco transparente
+    opacity: 0.75,
   // Fecha
   },
-  // Rótulo do mini cartão
-  miniRotulo: {
-    // Cinza clarinho
-    color: '#A7B8AE',
-    // Letra pequena
-    fontSize: 13,
-  // Fecha
-  },
-  // Valor do mini cartão
-  miniValor: {
-    // Tamanho médio
-    fontSize: 18,
-    // Negrito
-    fontWeight: 'bold',
+  // Valor de "Entrou" / "Saiu"
+  parteValor: {
+    // Letra simples, negrito
+    fontFamily: fontes.textoNegrito,
+    // Tamanho
+    fontSize: 16,
     // Espaço acima
-    marginTop: 6,
+    marginTop: 2,
   // Fecha
   },
   // Botão de nova transação
   botaoNovo: {
+    // Ícone e texto lado a lado
+    flexDirection: 'row',
+    // Centralizados
+    justifyContent: 'center',
+    // Alinhados no meio
+    alignItems: 'center',
+    // Espaço entre o ícone e o texto
+    gap: 8,
     // Espaço acima
-    marginTop: 20,
-    // Fundo branco, para chamar atenção
-    backgroundColor: '#FFFFFF',
+    marginTop: 14,
     // Espaço interno
-    padding: 16,
+    paddingVertical: 15,
     // Pontas arredondadas
     borderRadius: 14,
-    // Centraliza o texto
-    alignItems: 'center',
+    // Fundo grafite
+    backgroundColor: cores.grafite,
+    // Borda fina
+    borderWidth: 1,
+    // Cor da borda
+    borderColor: cores.grafiteBorda,
   // Fecha
   },
   // Texto do botão de nova transação
   botaoNovoTexto: {
-    // Verde bem escuro
-    color: '#0F1F17',
-    // Negrito
-    fontWeight: 'bold',
+    // Letra simples, negrito
+    fontFamily: fontes.textoNegrito,
     // Tamanho
     fontSize: 16,
+    // Dourado
+    color: cores.ouro,
   // Fecha
   },
-  // Título "Transações do mês"
+  // Título "Movimentações"
   secao: {
-    // Branco
-    color: '#FFFFFF',
+    // Letra do painel da bolsa (títulos)
+    fontFamily: fontes.marcaTitulo,
     // Tamanho
-    fontSize: 18,
-    // Negrito
-    fontWeight: 'bold',
+    fontSize: 24,
+    // Marfim
+    color: cores.marfim,
     // Espaço acima
     marginTop: 28,
     // Espaço abaixo
-    marginBottom: 8,
+    marginBottom: 4,
   // Fecha
   },
   // Aviso de erro
   erro: {
-    // Vermelho suave
-    color: '#FF8A80',
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Coral
+    color: cores.coral,
     // Espaço acima
     marginTop: 16,
   // Fecha
   },
   // Convite de lista vazia
   vazio: {
-    // Cinza clarinho
-    color: '#A7B8AE',
-    // Centralizado
-    textAlign: 'center',
-    // Espaço acima
-    marginTop: 24,
-    // Espaço entre as linhas
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Prata
+    color: cores.prata,
+    // Tamanho
+    fontSize: 15,
+    // Espaço entre linhas
     lineHeight: 22,
+    // Espaço acima
+    marginTop: 16,
   // Fecha
   },
   // Cada linha da lista
   item: {
-    // Emoji, texto e valor lado a lado
+    // Lado a lado
     flexDirection: 'row',
-    // Alinha tudo no meio, na altura
+    // Alinhados no meio
     alignItems: 'center',
+    // Espaço entre o ícone, o texto e o valor
+    gap: 12,
     // Espaço em cima e embaixo
-    paddingVertical: 14,
-    // Linha fininha embaixo, para separar as transações
+    paddingVertical: 12,
+    // Linha fina embaixo
     borderBottomWidth: 1,
-    // Cor da linha fininha
-    borderBottomColor: '#1A2E23',
+    // Cor da linha fina
+    borderBottomColor: cores.grafite,
   // Fecha
   },
-  // Emoji da linha
-  itemEmoji: {
-    // Tamanho do emoji
-    fontSize: 26,
-    // Espaço à direita, para afastar do texto
-    marginRight: 12,
+  // Quadradinho do ícone
+  itemIcone: {
+    // Largura
+    width: 42,
+    // Altura
+    height: 42,
+    // Pontas arredondadas
+    borderRadius: 12,
+    // Fundo grafite
+    backgroundColor: cores.grafite,
+    // Ícone no meio (horizontal)
+    alignItems: 'center',
+    // Ícone no meio (vertical)
+    justifyContent: 'center',
   // Fecha
   },
   // Descrição da linha
   itemTitulo: {
-    // Branco
-    color: '#FFFFFF',
+    // Letra simples, forte
+    fontFamily: fontes.textoForte,
     // Tamanho
     fontSize: 16,
+    // Marfim
+    color: cores.marfim,
   // Fecha
   },
-  // Categoria e data da linha
+  // Categoria e data
   itemDetalhe: {
-    // Cinza clarinho
-    color: '#A7B8AE',
-    // Letra pequena
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Pequena
     fontSize: 13,
+    // Prata
+    color: cores.prata,
     // Espaço acima
     marginTop: 2,
   // Fecha
   },
   // Valor da linha
   itemValor: {
+    // Letra simples, negrito
+    fontFamily: fontes.textoNegrito,
     // Tamanho
     fontSize: 16,
-    // Negrito
-    fontWeight: 'bold',
-    // Espaço à esquerda, para afastar do texto
-    marginLeft: 8,
-  // Fecha
-  },
-  // Botão de sair
-  botaoSair: {
-    // Bastante espaço acima, para ficar longe da lista
-    marginTop: 40,
-    // Espaço interno
-    padding: 14,
-    // Pontas arredondadas
-    borderRadius: 14,
-    // Borda fina
-    borderWidth: 1,
-    // Borda vermelha suave
-    borderColor: '#FF8A80',
-    // Centraliza o texto
-    alignItems: 'center',
-  // Fecha
-  },
-  // Texto do botão de sair
-  botaoSairTexto: {
-    // Vermelho suave
-    color: '#FF8A80',
-    // Negrito
-    fontWeight: 'bold',
   // Fecha
   },
 // Fecha os estilos
