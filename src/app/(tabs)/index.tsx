@@ -2,6 +2,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 // Importa o telefone do cofre (volta 2 pastas: sai de (tabs), sai de app, e entra em lib)
 import { supabase } from '../../lib/supabase';
+// Importa o "router", o GPS do app, que leva a pessoa de uma tela para outra
+import { router } from 'expo-router';
 
 // Cria a tela inicial. "export default" deixa o app encontrar esta tela
 export default function TelaInicial() {
@@ -24,7 +26,15 @@ export default function TelaInicial() {
         <Text style={estilos.cartaoValor}>R$ 0,00</Text>
       {/* Fecha o cartão */}
       </View>
+      {/* Botão de nova transação: ao tocar, o GPS coloca a tela de adicionar em cima desta */}
+      <Pressable style={estilos.botaoNovo} onPress={() => router.push('/nova-transacao')}>
+        {/* Texto do botão */}
+        <Text style={estilos.botaoNovoTexto}>➕ Nova transação</Text>
+      {/* Fecha o botão */}
+      </Pressable>
 
+      
+      
       {/* Botão de sair: ao tocar, pede ao cofre para jogar fora o crachá */}
       <Pressable style={estilos.botaoSair} onPress={() => supabase.auth.signOut()}>
         {/* Texto do botão */}
@@ -129,5 +139,29 @@ const estilos = StyleSheet.create({
     fontWeight: 'bold',
   // Fecha
   },
-// Fecha os estilos
+  // Botão de nova transação
+  botaoNovo: {
+    // Espaço acima, para afastar do cartão
+    marginTop: 24,
+    // Fundo branco, para chamar bastante atenção
+    backgroundColor: '#FFFFFF',
+    // Espaço interno
+    padding: 16,
+    // Pontas arredondadas
+    borderRadius: 14,
+    // Centraliza o texto
+    alignItems: 'center',
+  // Fecha
+  },
+  // Texto do botão de nova transação
+  botaoNovoTexto: {
+    // Verde bem escuro (a mesma cor do fundo da tela)
+    color: '#0F1F17',
+    // Negrito
+    fontWeight: 'bold',
+    // Tamanho
+    fontSize: 16,
+  // Fecha
+  },
+  // Fecha os estilos
 });

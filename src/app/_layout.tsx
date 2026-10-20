@@ -64,6 +64,8 @@ export default function LayoutPrincipal() {
       <Stack.Protected guard={!!sessao}>
         {/* A área VIP: a pasta (tabs) */}
         <Stack.Screen name="(tabs)" />
+                {/* A tela de nova transação, que "sobe" por cima das outras como um cartão (modal) */}
+        <Stack.Screen name="nova-transacao" options={{ presentation: 'modal' }} />
       {/* Fecha o portão 1 */}
       </Stack.Protected>
       {/* Portão 2: a recepção só abre SE a pessoa NÃO tiver crachá */}
