@@ -223,7 +223,6 @@ export default function TelaInicial() {
         <Text style={estilos.vazio}>Nada registrado em {mesExtenso} ainda. Toque em Nova transação para anotar o primeiro gasto ou entrada.</Text>
       // Fecha a situação 3
       )}
-
       {/* Para cada transação, uma linha tocável (a forma de biscoito) */}
       {transacoes.map((t) => (
         // A linha: ao tocar, abre a edição levando o RG no bilhete
@@ -248,7 +247,6 @@ export default function TelaInicial() {
         </Pressable>
       // Fecha a forma de biscoito
       ))}
-
     {/* Fecha a caixa que rola */}
     </ScrollView>
   // Fecha o return

@@ -1,271 +1,342 @@
-// Importa o useState: a "memória" da tela, para lembrar o que a pessoa digita
+// ============ PARTE 1: AS FERRAMENTAS ============
+// Importa a memória da tela (os post-its)
 import { useState } from 'react';
-// Importa as peças da tela: caixa, texto, campo de digitar, botão, rodinha e estilos
+// Importa as peças da tela
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-// Importa o telefone do cofre (o "../" quer dizer "volta uma pasta": sai de app e entra em lib)
+// Importa o pincel de degradê (para o botão de ouro)
+import { LinearGradient } from 'expo-linear-gradient';
+// Importa o logo (o @/ é um atalho que quer dizer "a partir da pasta src")
+import Logo from '@/components/logo';
+// Importa o telefone do cofre
 import { supabase } from '../lib/supabase';
+// Importa o guarda-roupa
+import { cores, degradeOuro, fontes } from '../lib/tema';
 
-// Função que traduz os erros do cofre (que vêm em inglês) para português
+// ============ PARTE 2: O TRADUTOR DE ERROS ============
+// Traduz os erros do cofre (em inglês) para português, explicando o que fazer
 function traduzirErro(mensagem: string) {
-  // Se o e-mail ou a senha estiverem errados...
-  if (mensagem.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
-  // Se a senha for curta demais...
+  // E-mail ou senha errados
+  if (mensagem.includes('Invalid login credentials')) return 'E-mail ou senha incorretos. Confira e tente de novo.';
+  // Senha curta demais
   if (mensagem.includes('Password should be')) return 'A senha precisa ter pelo menos 6 caracteres.';
-  // Se o e-mail já tiver uma conta...
-  if (mensagem.includes('already registered')) return 'Este e-mail já tem conta. Tente entrar.';
-  // Se o e-mail estiver escrito errado...
+  // E-mail já cadastrado
+  if (mensagem.includes('already registered')) return 'Este e-mail já tem conta. Toque em "Entrar" lá embaixo.';
+  // E-mail escrito errado
   if (mensagem.includes('invalid')) return 'Confira se o e-mail está escrito certo.';
-  // Para qualquer outro erro, mostra uma mensagem geral
-  return 'Algo deu errado. Tente de novo.';
-// Fecha a função de tradução
+  // Qualquer outro erro
+  return 'Não foi possível entrar agora. Confira sua internet e tente de novo.';
+// Fecha o tradutor
 }
 
-// Cria a tela de login. "export default" deixa o app encontrar esta tela
+// ============ PARTE 3: AS MEMÓRIAS E O CÉREBRO ============
+// Cria a tela de login
 export default function TelaLogin() {
-  // Post-it do e-mail digitado. Começa vazio
+  // Post-it do e-mail digitado
   const [email, setEmail] = useState('');
-  // Post-it da senha digitada. Começa vazio
+  // Post-it da senha digitada
   const [senha, setSenha] = useState('');
-  // Post-it de "está carregando?". Começa com "não" (false)
+  // Post-it de "está carregando?"
   const [carregando, setCarregando] = useState(false);
-  // Post-it da mensagem de aviso. Começa vazio
+  // Post-it da mensagem de aviso
   const [mensagem, setMensagem] = useState('');
-  // Post-it de "está no modo criar conta?". Começa com "não", ou seja, no modo entrar
+  // Post-it de "está no modo criar conta?"
   const [modoCadastro, setModoCadastro] = useState(false);
-  
-  // Função que roda quando a pessoa aperta o botão principal
+  // Post-it de "em qual campo a pessoa está digitando?" (para pintar a borda de dourado)
+  const [campoAtivo, setCampoAtivo] = useState<'email' | 'senha' | null>(null);
+
+  // Função que roda quando aperta o botão de ouro
   async function enviar() {
-    // Se o e-mail OU a senha estiverem vazios...
+    // Se faltou e-mail ou senha...
     if (!email || !senha) {
-      // ...mostra um aviso
+      // ...avisa
       setMensagem('Preencha o e-mail e a senha.');
-      // ...e para por aqui
+      // ...e para
       return;
     // Fecha o "se"
     }
-    // Liga a rodinha de carregamento
+    // Liga a rodinha
     setCarregando(true);
-    // Apaga qualquer aviso antigo
+    // Apaga avisos antigos
     setMensagem('');
-    // Liga para o cofre e guarda o erro, se houver
+    // Pede ao cofre: criar conta (se modo cadastro) ou entrar (se não)
     const { error } = modoCadastro
-      // SE estiver no modo cadastro: pede para criar conta (trim tira espaços sobrando no e-mail)
+      // Criar conta
       ? await supabase.auth.signUp({ email: email.trim(), password: senha })
-      // SE NÃO: pede para entrar
+      // Entrar
       : await supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
     // Desliga a rodinha
     setCarregando(false);
-    // Se o cofre respondeu com erro, mostra o erro traduzido
+    // Se deu erro, mostra traduzido (se deu certo, o porteiro leva a pessoa para dentro)
     if (error) setMensagem(traduzirErro(error.message));
   // Fecha a função enviar
   }
-  
+
+  // ============ PARTE 4: O DESENHO DA TELA ============
   // Devolve o que aparece na tela
   return (
-    // Caixa da tela inteira
+    // A tela inteira
     <View style={estilos.tela}>
+      {/* Caixa do formulário (no computador, fica com largura de celular) */}
+      <View style={estilos.caixa}>
 
-      {/* Emoji grande, servindo de logo por enquanto */}
-      <Text style={estilos.logo}>💰</Text>
+        {/* O logo, no meio */}
+        <View style={estilos.logo}>
+          {/* A peça de Lego do logo, com tamanho 96 */}
+          <Logo tamanho={96} />
+        {/* Fecha o logo */}
+        </View>
 
-      {/* Título que muda conforme o modo */}
-      <Text style={estilos.titulo}>{modoCadastro ? 'Criar conta' : 'Bem-vindo de volta'}</Text>
+        {/* O nome: "Finance" em marfim e "Help" em ouro */}
+        <Text style={estilos.marca}>Finance<Text style={{ color: cores.ouro }}>Help</Text></Text>
+        {/* O slogan */}
+        <Text style={estilos.slogan}>Cada real no seu lugar.</Text>
 
-      {/* Subtítulo que também muda conforme o modo */}
-      <Text style={estilos.subtitulo}>{modoCadastro ? 'Comece a organizar seu dinheiro hoje' : 'Entre para ver suas finanças'}</Text>
+        {/* Rótulo do e-mail (fica sempre visível, em cima do campo) */}
+        <Text style={estilos.rotulo}>E-mail</Text>
+        {/* Campo do e-mail */}
+        <TextInput
+          // Roupa do campo + borda dourada SÓ SE este for o campo ativo
+          style={[estilos.campo, campoAtivo === 'email' && estilos.campoAtivo]}
+          // Exemplo quando vazio
+          placeholder="seuemail@exemplo.com"
+          // Cor do exemplo
+          placeholderTextColor={cores.apagado}
+          // Mostra o post-it
+          value={email}
+          // Atualiza o post-it
+          onChangeText={setEmail}
+          // Quando tocar no campo, marca ele como ativo
+          onFocus={() => setCampoAtivo('email')}
+          // Quando sair do campo, desmarca
+          onBlur={() => setCampoAtivo(null)}
+          // Teclado com @
+          keyboardType="email-address"
+          // Sem letra maiúscula automática
+          autoCapitalize="none"
+          // Sugere o e-mail salvo (Android)
+          autoComplete="email"
+          // Sugere o e-mail salvo (iPhone)
+          textContentType="emailAddress"
+        // Fecha o campo do e-mail
+        />
 
-      {/* Campo para digitar o e-mail */}
-      <TextInput
-        // Aplica o estilo do campo
-        style={estilos.campo}
-        // Texto cinza que aparece quando o campo está vazio
-        placeholder="Seu e-mail"
-        // Cor desse texto cinza
-        placeholderTextColor="#6B7F73"
-        // O campo mostra o que está no post-it do e-mail
-        value={email}
-        // Cada letra digitada atualiza o post-it
-        onChangeText={setEmail}
-        // Abre o teclado que tem o @
-        keyboardType="email-address"
-        // Não deixa a primeira letra maiúscula automaticamente
-        autoCapitalize="none"
-        // Deixa o celular sugerir o e-mail que já está salvo nele
-        autoComplete="email"
-      // Fecha o campo de e-mail
-      />
+        {/* Rótulo da senha */}
+        <Text style={estilos.rotulo}>Senha</Text>
+        {/* Campo da senha */}
+        <TextInput
+          // Roupa do campo + borda dourada SÓ SE este for o campo ativo
+          style={[estilos.campo, campoAtivo === 'senha' && estilos.campoAtivo]}
+          // Exemplo quando vazio
+          placeholder="Mínimo de 6 caracteres"
+          // Cor do exemplo
+          placeholderTextColor={cores.apagado}
+          // Mostra o post-it
+          value={senha}
+          // Atualiza o post-it
+          onChangeText={setSenha}
+          // Quando tocar no campo, marca como ativo
+          onFocus={() => setCampoAtivo('senha')}
+          // Quando sair, desmarca
+          onBlur={() => setCampoAtivo(null)}
+          // Esconde a senha com bolinhas
+          secureTextEntry
+          // Sugere a senha salva (Android)
+          autoComplete="password"
+          // Sugere a senha salva (iPhone)
+          textContentType="password"
+        // Fecha o campo da senha
+        />
 
-      {/* Campo para digitar a senha */}
-      <TextInput
-        // Mesmo estilo do campo de e-mail
-        style={estilos.campo}
-        // Texto cinza quando está vazio
-        placeholder="Sua senha"
-        // Cor do texto cinza
-        placeholderTextColor="#6B7F73"
-        // Mostra o que está no post-it da senha
-        value={senha}
-        // Cada letra digitada atualiza o post-it da senha
-        onChangeText={setSenha}
-        // Esconde a senha com bolinhas ●●●
-        secureTextEntry
-        // Deixa o celular sugerir a senha salva
-        autoComplete="password"
-      // Fecha o campo de senha
-      />
+        {/* Se tiver aviso, mostra em coral */}
+        {mensagem !== '' && <Text style={estilos.mensagem}>{mensagem}</Text>}
 
-      {/* Se tiver alguma mensagem de aviso, mostra ela (o && quer dizer "só se") */}
-      {mensagem !== '' && <Text style={estilos.mensagem}>{mensagem}</Text>}
+        {/* O botão de ouro: fica mais transparente enquanto o dedo aperta (pressed) */}
+        <Pressable onPress={enviar} disabled={carregando} style={({ pressed }) => [estilos.botaoToque, (pressed || carregando) && { opacity: 0.75 }]}>
+          {/* O degradê dourado, na diagonal */}
+          <LinearGradient colors={degradeOuro} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botao}>
+            {/* Rodinha (se carregando) ou o texto do botão */}
+            {carregando ? <ActivityIndicator color={cores.ouroTinta} /> : <Text style={estilos.botaoTexto}>{modoCadastro ? 'Criar conta' : 'Entrar'}</Text>}
+          {/* Fecha o degradê */}
+          </LinearGradient>
+        {/* Fecha o botão */}
+        </Pressable>
 
-      {/* Botão principal */}
-      <Pressable
-        // Usa o estilo do botão e, se estiver carregando, deixa ele "apagadinho"
-        style={[estilos.botao, carregando && estilos.botaoDesativado]}
-        // Ao tocar, roda a função enviar (o cérebro do Pedaço 4)
-        onPress={enviar}
-        // Trava o botão enquanto carrega
-        disabled={carregando}
-      // Fecha a abertura do botão
-      >
-        {/* Se estiver carregando, mostra a rodinha. Se não, mostra o texto */}
-        {carregando ? <ActivityIndicator color="#FFFFFF" /> : <Text style={estilos.botaoTexto}>{modoCadastro ? 'Criar conta' : 'Entrar'}</Text>}
-      {/* Fecha o botão */}
-      </Pressable>
+        {/* Link para trocar de modo (e apaga o aviso antigo) */}
+        <Pressable onPress={() => { setModoCadastro(!modoCadastro); setMensagem(''); }} hitSlop={8}>
+          {/* A pergunta em prata e a ação em ouro */}
+          <Text style={estilos.link}>{modoCadastro ? 'Já tem conta? ' : 'Ainda não tem conta? '}<Text style={estilos.linkDestaque}>{modoCadastro ? 'Entrar' : 'Criar conta'}</Text></Text>
+        {/* Fecha o link */}
+        </Pressable>
 
-      {/* Link para trocar de modo: inverte o post-it e apaga o aviso antigo */}
-      <Pressable onPress={() => { setModoCadastro(!modoCadastro); setMensagem(''); }}>
-        {/* Texto do link, que muda conforme o modo */}
-        <Text style={estilos.link}>{modoCadastro ? 'Já tem conta? Entrar' : 'Não tem conta? Criar agora'}</Text>
-      {/* Fecha o link */}
-      </Pressable>
-
-    {/* Fecha a caixa da tela */}
+      {/* Fecha a caixa do formulário */}
+      </View>
+    {/* Fecha a tela */}
     </View>
   // Fecha o return
   );
 // Fecha a tela de login
 }
 
-// Estilos: a "roupa" da tela
+// ============ PARTE 5: A ROUPA (ESTILOS) ============
 const estilos = StyleSheet.create({
-  // Tela inteira
+  // A tela inteira
   tela: {
-    // Ocupa a tela toda
+    // Ocupa tudo
     flex: 1,
-    // Fundo verde bem escuro
-    backgroundColor: '#0F1F17',
+    // Fundo preto ônix
+    backgroundColor: cores.onix,
+    // Conteúdo no meio, de cima para baixo
+    justifyContent: 'center',
     // Espaço nas bordas
     padding: 24,
-    // Coloca tudo no meio da tela, de cima para baixo
-    justifyContent: 'center',
   // Fecha
   },
-  // Emoji do logo
+  // Caixa do formulário
+  caixa: {
+    // No computador, não passa de 420 de largura
+    maxWidth: 420,
+    // Ocupa a largura toda até esse limite
+    width: '100%',
+    // Fica centralizada
+    alignSelf: 'center',
+  // Fecha
+  },
+  // Lugar do logo
   logo: {
-    // Bem grande
-    fontSize: 56,
-    // Centralizado
-    textAlign: 'center',
+    // Logo no meio
+    alignItems: 'center',
     // Espaço abaixo
-    marginBottom: 12,
+    marginBottom: 14,
   // Fecha
   },
-  // Título
-  titulo: {
-    // Letra grande
-    fontSize: 28,
-    // Negrito
-    fontWeight: 'bold',
-    // Branca
-    color: '#FFFFFF',
+  // O nome do app
+  marca: {
+    // Letra do painel da bolsa, bem grossa
+    fontFamily: fontes.marca,
+    // Grande
+    fontSize: 44,
+    // Marfim
+    color: cores.marfim,
     // Centralizado
     textAlign: 'center',
   // Fecha
   },
-  // Subtítulo
-  subtitulo: {
-    // Letra média
+  // O slogan
+  slogan: {
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Tamanho
     fontSize: 16,
-    // Cinza clarinho
-    color: '#A7B8AE',
+    // Prata
+    color: cores.prata,
     // Centralizado
     textAlign: 'center',
-    // Espaço acima
-    marginTop: 4,
-    // Espaço abaixo, para afastar dos campos
+    // Espaço abaixo, para afastar do formulário
     marginBottom: 32,
+  // Fecha
+  },
+  // Rótulos dos campos
+  rotulo: {
+    // Letra simples, média
+    fontFamily: fontes.textoMedio,
+    // Pequena
+    fontSize: 13,
+    // Prata
+    color: cores.prata,
+    // Espaço abaixo, para afastar do campo
+    marginBottom: 6,
   // Fecha
   },
   // Campos de digitar
   campo: {
-    // Fundo um pouco mais claro que a tela
-    backgroundColor: '#1A2E23',
+    // Fundo grafite
+    backgroundColor: cores.grafite,
+    // Letra simples
+    fontFamily: fontes.texto,
     // Cor da letra digitada
-    color: '#FFFFFF',
+    color: cores.marfim,
+    // Tamanho da letra
+    fontSize: 16,
     // Espaço interno
     padding: 16,
     // Pontas arredondadas
     borderRadius: 14,
-    // Tamanho da letra
-    fontSize: 16,
-    // Espaço entre um campo e outro
-    marginBottom: 12,
-    // Espessura da borda
+    // Borda fina
     borderWidth: 1,
     // Cor da borda
-    borderColor: '#2A4234',
+    borderColor: cores.grafiteBorda,
+    // Espaço abaixo
+    marginBottom: 16,
+  // Fecha
+  },
+  // Campo onde a pessoa está digitando
+  campoAtivo: {
+    // Borda dourada
+    borderColor: cores.ouro,
   // Fecha
   },
   // Mensagem de aviso
   mensagem: {
-    // Vermelho suave
-    color: '#FF8A80',
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Coral
+    color: cores.coral,
     // Centralizado
     textAlign: 'center',
     // Espaço abaixo
     marginBottom: 12,
+    // Espaço entre linhas
+    lineHeight: 20,
   // Fecha
   },
-  // Botão principal
-  botao: {
-    // Verde vivo
-    backgroundColor: '#1E8E5A',
-    // Espaço interno
-    padding: 16,
+  // A área de toque do botão
+  botaoToque: {
     // Pontas arredondadas
     borderRadius: 14,
-    // Centraliza o texto do botão
-    alignItems: 'center',
+    // Corta o degradê nas pontas
+    overflow: 'hidden',
     // Espaço acima
-    marginTop: 8,
+    marginTop: 4,
   // Fecha
   },
-  // Botão enquanto carrega
-  botaoDesativado: {
-    // Meio transparente
-    opacity: 0.6,
+  // O degradê do botão
+  botao: {
+    // Espaço em cima e embaixo
+    paddingVertical: 16,
+    // Texto no meio
+    alignItems: 'center',
   // Fecha
   },
-  // Texto do botão
+  // Texto do botão de ouro
   botaoTexto: {
-    // Branco
-    color: '#FFFFFF',
-    // Negrito
-    fontWeight: 'bold',
+    // Letra simples, negrito
+    fontFamily: fontes.textoNegrito,
     // Tamanho
     fontSize: 16,
+    // Tinta escura (para ler bem em cima do dourado)
+    color: cores.ouroTinta,
   // Fecha
   },
-  // Link de trocar de modo
+  // O link de trocar de modo
   link: {
-    // Verde claro
-    color: '#4ADE80',
+    // Letra simples
+    fontFamily: fontes.texto,
+    // Tamanho
+    fontSize: 15,
+    // Prata
+    color: cores.prata,
     // Centralizado
     textAlign: 'center',
     // Espaço acima
-    marginTop: 20,
-    // Tamanho
-    fontSize: 15,
+    marginTop: 22,
+  // Fecha
+  },
+  // A parte dourada do link
+  linkDestaque: {
+    // Letra simples, forte
+    fontFamily: fontes.textoForte,
+    // Dourado
+    color: cores.ouro,
   // Fecha
   },
 // Fecha os estilos
