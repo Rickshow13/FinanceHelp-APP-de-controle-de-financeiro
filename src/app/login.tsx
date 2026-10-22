@@ -5,7 +5,10 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 // Importa o pincel de degradê (para o botão de ouro)
 import { LinearGradient } from 'expo-linear-gradient';
+// Importa o GPS do app (para ir até a tela de recuperar a senha)
+import { router } from 'expo-router';
 // Importa o logo (o @/ é um atalho que quer dizer "a partir da pasta src")
+// Importa o GPS do app (para ir até a tela de recuperar a senha)
 import Logo from '@/components/logo';
 // Importa o telefone do cofre
 import { supabase } from '../lib/supabase';
@@ -31,6 +34,8 @@ function traduzirErro(mensagem: string) {
 // ============ PARTE 3: AS MEMÓRIAS E O CÉREBRO ============
 // Cria a tela de login
 export default function TelaLogin() {
+  // 🆕 Post-it do nome digitado (só usado no cadastro)
+  const [nome, setNome] = useState('');
   // Post-it do e-mail digitado
   const [email, setEmail] = useState('');
   // Post-it da senha digitada
@@ -41,11 +46,19 @@ export default function TelaLogin() {
   const [mensagem, setMensagem] = useState('');
   // Post-it de "está no modo criar conta?"
   const [modoCadastro, setModoCadastro] = useState(false);
-  // Post-it de "em qual campo a pessoa está digitando?" (para pintar a borda de dourado)
-  const [campoAtivo, setCampoAtivo] = useState<'email' | 'senha' | null>(null);
+  // 🆕 Post-it de "em qual campo a pessoa está digitando?" (agora também pode ser o nome)
+  const [campoAtivo, setCampoAtivo] = useState<'nome' | 'email' | 'senha' | null>(null);
 
   // Função que roda quando aperta o botão de ouro
   async function enviar() {
+    // 🆕 No cadastro, se o nome tiver menos de 2 letras...
+    if (modoCadastro && nome.trim().length < 2) {
+      // ...avisa
+      setMensagem('Digite seu nome para a gente saber como te chamar.');
+      // ...e para
+      return;
+    // Fecha o "se"
+    }
     // Se faltou e-mail ou senha...
     if (!email || !senha) {
       // ...avisa
@@ -60,8 +73,8 @@ export default function TelaLogin() {
     setMensagem('');
     // Pede ao cofre: criar conta (se modo cadastro) ou entrar (se não)
     const { error } = modoCadastro
-      // Criar conta
-      ? await supabase.auth.signUp({ email: email.trim(), password: senha })
+      // 🆕 Criar conta, guardando o nome no "bolsinho" do crachá (user_metadata)
+      ? await supabase.auth.signUp({ email: email.trim(), password: senha, options: { data: { nome: nome.trim() } } })
       // Entrar
       : await supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
     // Desliga a rodinha
@@ -81,7 +94,7 @@ export default function TelaLogin() {
 
         {/* O logo, no meio */}
         <View style={estilos.logo}>
-          {/* A peça de Lego do logo, com tamanho 96 */}
+          {/* A peça de Lego do logo */}
           <Logo tamanho={96} />
         {/* Fecha o logo */}
         </View>
@@ -91,11 +104,46 @@ export default function TelaLogin() {
         {/* O slogan */}
         <Text style={estilos.slogan}>Cada real no seu lugar.</Text>
 
-        {/* Rótulo do e-mail (fica sempre visível, em cima do campo) */}
+        {/* 🆕 O campo de nome: SÓ aparece no modo cadastro */}
+        {modoCadastro && (
+          // Caixa do campo de nome
+          <View>
+            {/* Rótulo do nome */}
+            <Text style={estilos.rotulo}>Seu nome</Text>
+            {/* Campo do nome */}
+            <TextInput
+              // Roupa do campo + borda dourada se estiver digitando aqui
+              style={[estilos.campo, campoAtivo === 'nome' && estilos.campoAtivo]}
+              // Exemplo quando vazio
+              placeholder="Como você quer ser chamado"
+              // Cor do exemplo
+              placeholderTextColor={cores.apagado}
+              // Mostra o post-it
+              value={nome}
+              // Atualiza o post-it
+              onChangeText={setNome}
+              // Quando tocar no campo, marca como ativo
+              onFocus={() => setCampoAtivo('nome')}
+              // Quando sair, desmarca
+              onBlur={() => setCampoAtivo(null)}
+              // Primeira letra de cada palavra maiúscula (bom para nomes)
+              autoCapitalize="words"
+              // Sugere o nome salvo no celular (Android)
+              autoComplete="name"
+              // Sugere o nome salvo no celular (iPhone)
+              textContentType="name"
+            // Fecha o campo do nome
+            />
+          {/* Fecha a caixa do campo de nome */}
+          </View>
+        // Fecha o "só no modo cadastro"
+        )}
+
+        {/* Rótulo do e-mail */}
         <Text style={estilos.rotulo}>E-mail</Text>
         {/* Campo do e-mail */}
         <TextInput
-          // Roupa do campo + borda dourada SÓ SE este for o campo ativo
+          // Roupa do campo + borda dourada se estiver digitando aqui
           style={[estilos.campo, campoAtivo === 'email' && estilos.campoAtivo]}
           // Exemplo quando vazio
           placeholder="seuemail@exemplo.com"
@@ -105,9 +153,9 @@ export default function TelaLogin() {
           value={email}
           // Atualiza o post-it
           onChangeText={setEmail}
-          // Quando tocar no campo, marca ele como ativo
+          // Quando tocar no campo, marca como ativo
           onFocus={() => setCampoAtivo('email')}
-          // Quando sair do campo, desmarca
+          // Quando sair, desmarca
           onBlur={() => setCampoAtivo(null)}
           // Teclado com @
           keyboardType="email-address"
@@ -124,7 +172,7 @@ export default function TelaLogin() {
         <Text style={estilos.rotulo}>Senha</Text>
         {/* Campo da senha */}
         <TextInput
-          // Roupa do campo + borda dourada SÓ SE este for o campo ativo
+          // Roupa do campo + borda dourada se estiver digitando aqui
           style={[estilos.campo, campoAtivo === 'senha' && estilos.campoAtivo]}
           // Exemplo quando vazio
           placeholder="Mínimo de 6 caracteres"
@@ -147,10 +195,20 @@ export default function TelaLogin() {
         // Fecha o campo da senha
         />
 
+               {/* Link "Esqueci minha senha": SÓ aparece no modo entrar */}
+        {!modoCadastro && (
+          // O link, alinhado à direita
+          <Pressable onPress={() => router.push('/esqueci-senha')} hitSlop={8} style={estilos.esqueciToque}>
+            {/* Texto do link */}
+            <Text style={estilos.esqueci}>Esqueci minha senha</Text>
+          {/* Fecha o link */}
+          </Pressable>
+        // Fecha o "só no modo entrar"
+        )}
         {/* Se tiver aviso, mostra em coral */}
         {mensagem !== '' && <Text style={estilos.mensagem}>{mensagem}</Text>}
 
-        {/* O botão de ouro: fica mais transparente enquanto o dedo aperta (pressed) */}
+        {/* O botão de ouro: fica mais transparente enquanto o dedo aperta */}
         <Pressable onPress={enviar} disabled={carregando} style={({ pressed }) => [estilos.botaoToque, (pressed || carregando) && { opacity: 0.75 }]}>
           {/* O degradê dourado, na diagonal */}
           <LinearGradient colors={degradeOuro} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.botao}>
@@ -243,7 +301,7 @@ const estilos = StyleSheet.create({
     fontSize: 13,
     // Prata
     color: cores.prata,
-    // Espaço abaixo, para afastar do campo
+    // Espaço abaixo
     marginBottom: 6,
   // Fecha
   },
@@ -313,7 +371,7 @@ const estilos = StyleSheet.create({
     fontFamily: fontes.textoNegrito,
     // Tamanho
     fontSize: 16,
-    // Tinta escura (para ler bem em cima do dourado)
+    // Tinta escura
     color: cores.ouroTinta,
   // Fecha
   },
@@ -339,5 +397,25 @@ const estilos = StyleSheet.create({
     color: cores.ouro,
   // Fecha
   },
-// Fecha os estilos
+  // Área de toque do "Esqueci minha senha"
+  esqueciToque: {
+    // Alinhado à direita
+    alignSelf: 'flex-end',
+    // Sobe um pouquinho, para ficar mais perto do campo de senha
+    marginTop: -6,
+    // Espaço abaixo
+    marginBottom: 16,
+  // Fecha
+  },
+  // Texto do "Esqueci minha senha"
+  esqueci: {
+    // Letra simples, forte
+    fontFamily: fontes.textoForte,
+    // Tamanho
+    fontSize: 14,
+    // Dourado
+    color: cores.ouro,
+  // Fecha
+  },
+  // Fecha os estilos
 });

@@ -83,6 +83,8 @@ export default function TelaInicial() {
   const [carregando, setCarregando] = useState(true);
   // Post-it do aviso de erro
   const [erro, setErro] = useState('');
+    // Post-it do nome da pessoa (lido do bolsinho do crachá)
+  const [nome, setNome] = useState('');
 
   // Pega a data de hoje
   const hoje = new Date();
@@ -94,7 +96,11 @@ export default function TelaInicial() {
   // Função que busca as transações do mês no cofre
   async function carregar() {
     // Liga a rodinha
-    setCarregando(true);
+
+        // Pega o crachá guardado no celular (não precisa de internet)
+    const { data: dadosDoCracha } = await supabase.auth.getSession();
+    // Lê o nome do bolsinho do crachá (se não tiver nome, fica vazio)
+    setNome(dadosDoCracha.session?.user.user_metadata?.nome ?? '');
     // Pede ao cofre: tudo da gaveta transacoes, deste mês, da mais nova para a mais antiga
     const { data, error } = await supabase
       // Na gaveta transacoes...
@@ -166,8 +172,7 @@ export default function TelaInicial() {
       </View>
 
       {/* Saudação com o mês */}
-      <Text style={estilos.saudacao}>Este é o seu {mesExtenso}.</Text>
-
+      <Text style={estilos.saudacao}>{nome ? `Olá, ${nome.split(' ')[0]}. ` : ''}Este é o seu {mesExtenso}.</Text>
       {/* O LINGOTE: degradê na diagonal ↘️, dourado se positivo e coral se negativo */}
       <LinearGradient colors={negativo ? degradeCoral : degradeOuro} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={estilos.lingote}>
         {/* O reflexo de luz: branco transparente na metade de cima, que faz parecer metal */}

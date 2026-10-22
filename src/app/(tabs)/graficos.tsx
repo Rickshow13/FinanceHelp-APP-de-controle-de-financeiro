@@ -13,6 +13,9 @@ import { supabase } from '../../lib/supabase';
 import { CATEGORIAS_GASTO, type NomeIcone } from '../../lib/categorias';
 // Importa o guarda-roupa
 import { cores, fontes } from '../../lib/tema';
+// Importa a peça do gráfico de evolução
+import GraficoEvolucao from '@/components/grafico-evolucao';
+// Importa a peça do gráfico de evolução
 
 // ============ PARTE 2: A FICHA E OS AJUDANTES ============
 // A ficha de um gasto (só as 2 informações que o gráfico usa)
@@ -234,6 +237,8 @@ export default function TelaGraficos() {
       // Fecha a situação 4
       )}
 
+          {/* O gráfico de evolução dos últimos 6 meses */}
+      <GraficoEvolucao />
     {/* Fecha a caixa que rola */}
     </ScrollView>
   // Fecha o return
