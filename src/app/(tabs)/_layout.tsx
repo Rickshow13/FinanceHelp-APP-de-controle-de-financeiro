@@ -29,11 +29,13 @@ export default function LayoutAbas() {
       }}
     // Fecha a abertura das abas
     >
-      {/* Aba "Início": ícone de casa (cheio se escolhida, só contorno se não) */}
-      <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} /> }} />      {/* Aba "Gráficos": ícone de barras (cheio se escolhida, só contorno se não) */}
-      <Tabs.Screen name="graficos" options={{ title: 'Gráficos', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color as string} /> }} />      {/* A tela de exemplo do Expo: continua escondida (sem endereço) */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
-    {/* Fecha as abas */}
+      {/* Aba "Início": ícone de casa */}
+      <Tabs.Screen name="index" options={{ title: 'Início', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} /> }} />
+      {/* Aba "Gráficos": ícone de barras */}
+      <Tabs.Screen name="graficos" options={{ title: 'Gráficos', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color as string} /> }} />
+      {/* 🆕 Aba "Dicas": ícone de lâmpada */}
+      <Tabs.Screen name="dicas" options={{ title: 'Dicas', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'bulb' : 'bulb-outline'} size={22} color={color as string} /> }} />
+          {/* Fecha as abas */}
     </Tabs>
   // Fecha o return
   );

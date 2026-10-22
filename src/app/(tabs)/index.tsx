@@ -238,7 +238,7 @@ export default function TelaInicial() {
             {/* Descrição (ou categoria), com a primeira letra maiúscula e cortada em 1 linha */}
             <Text style={estilos.itemTitulo} numberOfLines={1}>{primeiraMaiuscula(t.descricao || t.categoria)}</Text>
             {/* Categoria e data, em prata */}
-            <Text style={estilos.itemDetalhe}>{t.descricao ? `${t.categoria}, ${formatarData(t.data)}` : formatarData(t.data)}</Text>          {/* Fecha a caixa do meio */}
+            <Text style={estilos.itemDetalhe}>{t.descricao ? `${t.categoria}, ${formatarData(t.data)}` : formatarData(t.data)}</Text>
           </View>
           {/* Valor: "−" e coral se gasto, "+" e dourado se entrada */}
           <Text style={[estilos.itemValor, { color: t.tipo === 'gasto' ? cores.coral : cores.ouro }]}>{(t.tipo === 'gasto' ? '−' : '+') + formatarReais(Number(t.valor))}</Text>
