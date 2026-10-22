@@ -35,6 +35,8 @@ export default function LayoutAbas() {
       <Tabs.Screen name="graficos" options={{ title: 'Gráficos', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'bar-chart' : 'bar-chart-outline'} size={22} color={color as string} /> }} />
       {/* 🆕 Aba "Dicas": ícone de lâmpada */}
       <Tabs.Screen name="dicas" options={{ title: 'Dicas', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'bulb' : 'bulb-outline'} size={22} color={color as string} /> }} />
+           {/* Aba "Perfil": ícone de pessoa */}
+      <Tabs.Screen name="perfil" options={{ title: 'Perfil', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} /> }} /> 
           {/* Fecha as abas */}
     </Tabs>
   // Fecha o return
