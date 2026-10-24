@@ -39,8 +39,8 @@ A estrutura completa do banco, com as tabelas, as regras de segurança e a funç
 
 1. Clone o projeto e instale as dependências:
    ```
-   git clone https://github.com/Rickshow13/meu-financeiro.git
-   cd meu-financeiro
+   git clone https://github.com/Rickshow13/FinanceHelp-APP-de-controle-de-financeiro
+   cd financehelp
    npm install
    ```
 2. Crie um projeto no [Supabase](https://supabase.com) e rode o arquivo `docs/banco.sql` no SQL Editor
