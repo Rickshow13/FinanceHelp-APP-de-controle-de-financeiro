@@ -1,56 +1,73 @@
-# Welcome to your Expo app 👋
+<p align="center">
+  <img src="assets/financehelp/icon.png" width="96" alt="Logo do FinanceHelp">
+</p>
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<h1 align="center">FinanceHelp</h1>
 
-## Get started
+<p align="center">Cada real no seu lugar.</p>
 
-1. Install dependencies
+App de finanças pessoais para registrar gastos e entradas, entender para onde o dinheiro vai e receber dicas a partir dos próprios números. Feito para quem quer largar a planilha.
 
-   ```bash
+## O que dá para fazer
+
+- Criar conta com nome, e-mail e senha, e recuperar a senha com um código enviado por e-mail
+- Registrar gastos e entradas em poucos toques, com o valor digitado no estilo de app de banco
+- Editar e apagar movimentações, com confirmação em dois toques para evitar acidentes
+- Ver o saldo do mês num cartão que fica dourado quando sobra dinheiro e coral quando falta
+- Ver para onde o dinheiro foi, em ranking por categoria, e comparar entradas e saídas dos últimos 6 meses
+- Receber dicas calculadas a partir dos próprios números, com base na regra 50-30-20
+- Apagar a conta e todos os dados pelo próprio app, como pede a LGPD
+
+## Tecnologias
+
+- [React Native](https://reactnative.dev) com [Expo](https://expo.dev) (SDK 58) e Expo Router
+- TypeScript
+- [Supabase](https://supabase.com): autenticação e banco de dados PostgreSQL
+- [Brevo](https://www.brevo.com) para o envio dos e-mails de recuperação de senha
+- react-native-svg e expo-linear-gradient para o logo e o brilho metálico do cartão de saldo
+- Fontes Big Shoulders e Schibsted Grotesk
+
+## Segurança
+
+- **Row Level Security (RLS)** no banco: cada usuário só consegue ver, criar, editar e apagar os próprios registros
+- A exclusão de conta é feita por uma função `security definer` dentro do banco, então a chave de administrador nunca fica no app
+- Nenhuma chave secreta no código: as configurações ficam num arquivo `.env`, que não vai para o repositório
+
+A estrutura completa do banco, com as tabelas, as regras de segurança e a função de exclusão de conta, está em [`docs/banco.sql`](docs/banco.sql).
+
+## Como rodar no seu computador
+
+1. Clone o projeto e instale as dependências:
+   ```
+   git clone https://github.com/Rickshow13/meu-financeiro.git
+   cd meu-financeiro
    npm install
    ```
-
-2. Start the app
-
-   ```bash
+2. Crie um projeto no [Supabase](https://supabase.com) e rode o arquivo `docs/banco.sql` no SQL Editor
+3. Copie o arquivo `.env.example`, renomeie a cópia para `.env` e preencha com o endereço e a chave pública do seu projeto
+4. Inicie o app:
+   ```
    npx expo start
    ```
+   Aperte `w` para abrir no navegador
 
-In the output, you'll find options to open the app in a
+## Organização das pastas
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+├── app/            Telas (cada arquivo é uma rota do Expo Router)
+│   ├── (tabs)/     As abas: Início, Gráficos, Dicas e Perfil
+│   └── _layout.tsx O "porteiro": decide entre o login e as telas do app
+├── components/     Peças reaproveitáveis (logo e gráfico de evolução)
+└── lib/            Conexão com o Supabase, tema (cores e fontes) e categorias
+docs/
+└── banco.sql       Estrutura do banco de dados
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Autores
 
-### Other setup steps
+Desenvolvido por **Henrique Gava*
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Licença
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Todos os direitos reservados. Veja o arquivo [LICENSE](LICENSE).
